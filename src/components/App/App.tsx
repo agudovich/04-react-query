@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import ReactPaginate from "react-paginate";
 
 import { fetchMovies } from "../../services/movieService";
@@ -18,10 +18,11 @@ export default function App() {
   const [page, setPage] = useState<number>(1);
   const [selected, setSelected] = useState<Movie | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isError, isSuccess, isPending, isFetching } = useQuery({
     queryKey: ["movies", query, page],
     queryFn: () => fetchMovies(query, page),
     enabled: !!query,
+    placeholderData: keepPreviousData,
     staleTime: 60_000,
   });
 
@@ -32,9 +33,14 @@ export default function App() {
 
   const movies = data?.results ?? [];
   const totalPages = data?.total_pages ?? 0;
-  if (query && !isLoading && !isError && movies.length === 0) {
-    toast.error("No movies found for your request.");
-  }
+
+  // тост
+  useEffect(() => {
+    if (!query) return;
+    if (isSuccess && data && data.results.length === 0) {
+      toast.error("No movies found for your request.");
+    }
+  }, [isSuccess, data, query]);
 
   return (
     <>
@@ -42,10 +48,10 @@ export default function App() {
 
       <SearchBar onSubmit={handleSearch} />
 
-      {isLoading && <Loader />}
-      {!isLoading && isError && <ErrorMessage />}
+      {query && isPending && <Loader />}
+      {query && !isPending && isError && <ErrorMessage />}
 
-      {!isLoading && !isError && movies.length > 0 && (
+      {query && !isPending && !isError && isSuccess && (
         <>
           {totalPages > 1 && (
             <ReactPaginate
@@ -61,7 +67,11 @@ export default function App() {
             />
           )}
 
-          <MovieGrid movies={movies} onSelect={setSelected} />
+          {movies.length > 0 && (
+            <MovieGrid movies={movies} onSelect={setSelected} />
+          )}
+
+          {isFetching && <div className={css.updating}>Updating…</div>}
         </>
       )}
 
