@@ -5,7 +5,7 @@ import type { Movie } from "../types/movie";
 export interface TMDBSearchResponse {
   page: number;
   results: Movie[];
-  total_pages: number;
+  total_pages: number; // ← важно: plural
   total_results: number;
 }
 
